@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from graph_service import shortest_path
+from datetime import datetime
+from fastapi import Query
 
 import models
 import schemas
@@ -135,3 +137,52 @@ def get_shortest_route(req: schemas.RouteRequest, db: Session = Depends(get_db))
         "total_latency": latency,
         "path": path
     }
+
+@router.get("/routes/history")
+def get_route_history(
+    source: str | None = Query(None),
+    destination: str | None = Query(None),
+    limit: int | None = Query(None),
+    date_from: str | None = Query(None),
+    date_to: str | None = Query(None),
+    db: Session = Depends(get_db)
+):
+
+    query = db.query(models.RouteHistory)
+
+    if source:
+        query = query.filter(models.RouteHistory.source == source)
+
+    if destination:
+        query = query.filter(models.RouteHistory.destination == destination)
+
+    if date_from:
+        query = query.filter(
+            models.RouteHistory.created_at >= datetime.fromisoformat(date_from)
+        )
+
+    if date_to:
+        query = query.filter(
+            models.RouteHistory.created_at <= datetime.fromisoformat(date_to)
+        )
+
+    query = query.order_by(models.RouteHistory.created_at.desc())
+
+    if limit:
+        query = query.limit(limit)
+
+    history_records = query.all()
+
+    results = []
+
+    for record in history_records:
+        results.append({
+            "id": record.id,
+            "source": record.source,
+            "destination": record.destination,
+            "total_latency": record.total_latency,
+            "path": record.path.split(","),
+            "created_at": record.created_at
+        })
+
+    return results
