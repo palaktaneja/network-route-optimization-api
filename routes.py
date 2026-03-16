@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from graph_service import shortest_path
 
 import models
 import schemas
@@ -92,3 +93,45 @@ def get_edges(db: Session = Depends(get_db)):
     edges = db.query(models.Edge).all()
 
     return edges
+
+@router.post("/routes/shortest", response_model=schemas.RouteResponse)
+def get_shortest_route(req: schemas.RouteRequest, db: Session = Depends(get_db)):
+
+    source_node = db.query(models.Node).filter(
+        models.Node.name == req.source
+    ).first()
+
+    destination_node = db.query(models.Node).filter(
+        models.Node.name == req.destination
+    ).first()
+
+    if not source_node or not destination_node:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid source or destination node"
+        )
+
+    edges = db.query(models.Edge).all()
+
+    latency, path = shortest_path(edges, req.source, req.destination)
+
+    if not path:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No path exists between {req.source} and {req.destination}"
+        )
+
+    history = models.RouteHistory(
+        source=req.source,
+        destination=req.destination,
+        total_latency=latency,
+        path=",".join(path)
+    )
+
+    db.add(history)
+    db.commit()
+
+    return {
+        "total_latency": latency,
+        "path": path
+    }
