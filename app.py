@@ -2,8 +2,8 @@ from fastapi import FastAPI
 from database import engine, Base
 
 import models
+import routes
 
-# create database tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
@@ -12,10 +12,9 @@ app = FastAPI(
     version="1.0.0"
 )
 
+app.include_router(routes.router)
+
 
 @app.get("/")
 def home():
-    """
-    Simple health check endpoint.
-    """
     return {"message": "Network Route Optimization API is running"}
