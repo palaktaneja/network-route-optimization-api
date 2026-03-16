@@ -1,6 +1,11 @@
 from fastapi import FastAPI
+from database import engine, Base
 
-# creating the API application
+import models
+
+# create database tables
+Base.metadata.create_all(bind=engine)
+
 app = FastAPI(
     title="Network Route Optimization API",
     description="API to manage network nodes and calculate shortest routes based on latency",
@@ -11,7 +16,6 @@ app = FastAPI(
 @app.get("/")
 def home():
     """
-    Basic health check endpoint.
-    Useful to confirm the API is running.
+    Simple health check endpoint.
     """
     return {"message": "Network Route Optimization API is running"}
